@@ -5,18 +5,59 @@ using UnityEngine;
 public class PlayerMove : MonoBehaviour
 {
     public GameManager gameManager;
+    public AudioClip audioJump;
+    public AudioClip audioAttack;
+    public AudioClip audioDamaged;
+    public AudioClip audioItem;
+    public AudioClip audioDie;
+    public AudioClip audioFinish;
     public float maxSpeed;
     public float jumpPower;
+
     Rigidbody2D rigid;
     SpriteRenderer spriteRenderer;
     Animator anim;
+    CapsuleCollider2D collider;
+    AudioSource audioSource;
     void Awake()
     {
         rigid = GetComponent<Rigidbody2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
         anim = GetComponent<Animator>();
+        collider = GetComponent<CapsuleCollider2D>();
+        audioSource = GetComponent<AudioSource>();
     }
 
+    void PlaySound(string action)
+    {
+        switch (action)
+        {
+            case "JUMP":
+                audioSource.clip = audioJump;
+                audioSource.Play();
+                break;
+            case "ATTACK":
+                audioSource.clip = audioAttack;
+                audioSource.Play();
+                break;
+            case "DAMAGED":
+                audioSource.clip = audioDamaged;
+                audioSource.Play();
+                break;
+            case "ITEM":
+                audioSource.clip = audioItem;
+                audioSource.Play();
+                break;
+            case "DIE":
+                audioSource.clip = audioDie;
+                audioSource.Play();
+                break;
+            case "FINISH":
+                audioSource.clip = audioFinish;
+                audioSource.Play();
+                break;
+        }
+    }
     void Update()
     {
         //점프 애니메이션
@@ -24,6 +65,7 @@ public class PlayerMove : MonoBehaviour
         {
             rigid.AddForce(Vector2.up * jumpPower, ForceMode2D.Impulse);
             anim.SetBool("isJumping", true);
+            PlaySound("JUMP");
         }
         //버튼 떼면 스탑
         if(Input.GetButtonUp("Horizontal"))
@@ -75,16 +117,21 @@ public class PlayerMove : MonoBehaviour
             if(rigid.velocity.y < 0 && transform.position.y > collision.transform.position.y)
             {
                 OnAttack(collision.transform);
+                PlaySound("ATTACK");
             }
             else //아니면 데미지 입음.
             {
                 OnDamaged(collision.transform.position);
+                PlaySound("DAMAGED");
             }
         }
     }
 
     void OnDamaged(Vector2 targetPos) //맞으면 무적시간 부여
     {
+        //hp 깎임
+        gameManager.HealthDown();
+
         //layer를 Player에서 PlayerDamaged로 설정
         gameObject.layer = 11; 
 
@@ -136,11 +183,32 @@ public class PlayerMove : MonoBehaviour
 
             //동전 사라지기
             collision.gameObject.SetActive(false);
+
+            PlaySound("ITEM");
         }
         else if(collision.gameObject.tag == "Finish")
         {
             //게임 클리어 -> 다음 스테이지로
             gameManager.NextStage();
+            PlaySound("FINISH");
         }
+    }
+
+    public void OnDie()
+    {
+        //색상 제어
+        spriteRenderer.color = new Color(1, 1, 1, 0.4f);
+        //바라보는 방향 제어
+        spriteRenderer.flipY = true;
+        //사라짐
+        collider.enabled = false;
+        //살짝 점프했다 추락하기
+        rigid.AddForce(Vector2.up * 5, ForceMode2D.Impulse);
+        PlaySound("DIE");
+    }
+
+    public void VelocityZero()
+    {
+        rigid.velocity = Vector2.zero;
     }
 }
